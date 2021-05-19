@@ -7,6 +7,7 @@ import re
 import sys
 
 
+// Since Windows is the odd-man-out (relating to file extensions and other things), I only test for it.
 def is_windows(a=None, b=None):
     win_test = platform.system() == "Windows"
     if a is None:
