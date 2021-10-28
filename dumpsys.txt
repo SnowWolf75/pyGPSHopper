@@ -1,0 +1,2 @@
+    gps provider:
+      last location=Location[gps 47.317565,-122.359315 hAcc=26 et=+46d6h37m7s176ms etAcc=+100ms alt=63.845947265625 vel=0.0 vAcc=40 sAcc=1 bAcc=??? {Bundle[{satellites=0, maxCn0=0, meanCn0=0}]}]

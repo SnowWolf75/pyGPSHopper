@@ -176,7 +176,7 @@ def main():
     for pair in waypoints:
         try:
             print(f"DDD: {pair}")
-            current = re.match(r'^[\w\s]*([0-9.-]+)[,/ ]([0-9.-]+)', pair).groups()
+            current = re.match(r'^[\s]*([0-9.-]+)[,/ ]([0-9.-]+)', pair).groups()
             current = tuple(float(n) for n in current)
             print("-- Jumping to %.5f, %.5f" % current)
             if previous != (0.0, 0.0):
