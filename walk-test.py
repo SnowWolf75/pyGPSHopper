@@ -4,34 +4,64 @@ import os
 import subprocess
 import geopy.distance
 from datetime import datetime
+import math
 
-class Coordinate(object):
-    def __init__(self, ln, lg):
-        self.lat = ln
-        self.lon = lg
+
+class MyPoint(geopy.Point):
+    # def __init__(self, ln, lg):
+    #     self.latitude = ln
+    #     self.longitude = lg
+
+    def make_mp(self, temp_point):
+        return MyPoint(temp_point.latitude, temp_point.longitude)
 
     def getLat(self):
         # Getter method for a Coordinate object's x coordinate.
         # Getter methods are better practice than just accessing an attribute directly
-        return self.lat
+        return self.latitude
 
     def getLon(self):
         # Getter method for a Coordinate object's y coordinate
-        return self.lon
+        return self.longitude
 
-    def __str__(self):
-        return '<' + str(self.getLat()) + ',' + str(self.getLon()) + '>'
-
-    def __eq__(self, other):
-        return self.lon == other.lng and self.lat == other.lat
-
-    def __repr__(self):
-        return "Coordinate(%d, %d)" % (self.lat, self.lon)
+    # def __str__(self):
+    #     return '<' + str(self.getLat()) + ',' + str(self.getLon()) + '>'
+    #
+    # def __eq__(self, other):
+    #     return self.longitude == other.longitude and self.latitude == other.latitude
+    #
+    # def __repr__(self):
+    #     return "Coordinate(%d, %d)" % (self.latitude, self.longitude)
 
     def distance_in_km(self, other):
-        a = (self.lat, self.lon)
-        b = (other.lat, other.lon)
+        a = (self.latitude, self.longitude)
+        b = (other.latitude, other.longitude)
         return geopy.distance.distance(a, b).km
+
+    def get_bearing(self, other):
+        # Calculate the bearing to the destination
+        dLon = other.longitude - self.longitude
+        y = math.sin(dLon) * math.cos(other.latitude)
+        x = math.cos(self.latitude) * math.sin(other.latitude) - math.sin(self.latitude) * math.cos(other.latitude) * math.cos(dLon)
+        print("b",x,y,dLon)
+        brng = math.atan2(y, x)
+        if brng < 0:
+            brng += 360
+        return brng
+
+    def walk_to_dest(self, other, distance):
+        if self.distance_in_km(other) < distance:
+            # Distance between A and B is less than the distance to travel,
+            # then just return the point for B.
+            print(".")
+            return other
+
+        bearing = self.get_bearing(other)
+        offset = geopy.distance.distance(distance).destination(other, bearing=bearing)
+        mp = self.make_mp(offset)
+
+        return mp
+
 
 
 # adb shell dumpsys location |grep -A 1 "gps provider"
@@ -61,22 +91,22 @@ except AttributeError:
     exit(1)
 
 print("Starting Coords:\n\tLat: %s\tLon: %s" % (lat, lon))
-current = Coordinate(ln=lat, lg=lon)
+current = MyPoint(float(lat), float(lon))
 
 
 def ask_coords():
     check = str(input("New coords to walk to (comma sep) or Enter to exit: ")).lower().strip()
     try:
         if check == '':
-            return Coordinate(0, 0), 1
+            return MyPoint(0, 0), 1
 
         pair = re.search("([0-9.-]+)[, ]+([0-9.-]+)", check)
         my_lat = float(pair.groups()[0])
         my_lon = float(pair.groups()[1])
-        return Coordinate(ln=my_lat, lg=my_lon), 0
+        return MyPoint(my_lat, my_lon), 0
     except AttributeError:
         print("Error during catch! ", end='')
-        return Coordinate(0, 0), 1
+        return MyPoint(0, 0), 1
 
 
 while 1:
@@ -93,5 +123,13 @@ while 1:
     base = datetime(2021, 1, 1, 0, 0, 0).timestamp()
     offset = base + (pulses * 3)
     print("Time taken (hms): %s" % datetime.fromtimestamp(offset).strftime("%H:%M:%S"))
+
+    step = current
+    i = 0
+    while step != future_loc:
+        step = current.walk_to_dest(future_loc, distance_per_pulse_km)
+        print("Step %d, Coords: %s" % (i, step.format_decimal()))
+        i += 1
+        current = step
 
     current = future_loc
