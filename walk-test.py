@@ -43,10 +43,10 @@ class MyPoint(geopy.Point):
         dLon = other.longitude - self.longitude
         y = math.sin(dLon) * math.cos(other.latitude)
         x = math.cos(self.latitude) * math.sin(other.latitude) - math.sin(self.latitude) * math.cos(other.latitude) * math.cos(dLon)
-        print("b",x,y,dLon)
         brng = math.atan2(y, x)
         if brng < 0:
             brng += 360
+        print("b", x, y, dLon, brng)
         return brng
 
     def walk_to_dest(self, other, distance):
@@ -69,13 +69,13 @@ adb_command = "adb shell am startservice -a theappninjas.gpsjoystick.TELEPORT --
 minute = 60
 hour = 3600
 walk_speed_in_kmh = 10.0
-walk_speed_in_mps = (walk_speed_in_kmh * 1000) / hour
+walk_speed_in_kps = walk_speed_in_kmh / hour
 pulse_timing = 3  # seconds between sending commands
 
-distance_per_pulse = walk_speed_in_mps * pulse_timing
+distance_per_pulse = walk_speed_in_kps * pulse_timing
 distance_per_pulse_km = (walk_speed_in_kmh * pulse_timing) / hour
 
-print("Distance per pulse (km): %f" % distance_per_pulse_km)
+print("Distance per pulse (km): %f" % distance_per_pulse)
 
 process = subprocess.Popen('adb shell dumpsys location |grep -A 1 "Last Known Locations:"', shell=True,
                            stdout=subprocess.PIPE)
@@ -127,7 +127,7 @@ while 1:
     step = current
     i = 0
     while step != future_loc:
-        step = current.walk_to_dest(future_loc, distance_per_pulse_km)
+        step = current.walk_to_dest(future_loc, distance_per_pulse)
         print("Step %d, Coords: %s" % (i, step.format_decimal()))
         i += 1
         current = step
