@@ -5,6 +5,7 @@ import subprocess
 import geopy.distance
 from datetime import datetime
 import math
+import numpy
 
 
 class MyPoint(geopy.Point):
@@ -41,27 +42,105 @@ class MyPoint(geopy.Point):
     def get_bearing(self, other):
         # Calculate the bearing to the destination
         dLon = other.longitude - self.longitude
-        y = math.sin(dLon) * math.cos(other.latitude)
-        x = math.cos(self.latitude) * math.sin(other.latitude) - math.sin(self.latitude) * math.cos(other.latitude) * math.cos(dLon)
-        brng = math.atan2(y, x)
+        y = math.cos(math.radians(other.latitude)) * math.sin(math.radians(dLon))
+        x = math.cos(math.radians(self.latitude)) * math.sin(math.radians(other.latitude)) \
+            - math.cos(math.radians(other.latitude)) * math.sin(math.radians(self.latitude)) \
+            * math.cos(math.radians(dLon))
+        brng = numpy.arctan2(x, y)
+        brng = numpy.degrees(brng)
+
         if brng < 0:
             brng += 360
-        print("b", x, y, dLon, brng)
+        # print("b", x, y, dLon, brng)
         return brng
 
-    def walk_to_dest(self, other, distance):
-        if self.distance_in_km(other) < distance:
+    def walk_to_dest(self, other, walk_distance):
+        km_dist = self.distance_in_km(other)
+        #print("Step distance (km): %.4f\tTo target: %.4f" % (walk_distance, km_dist))
+        if km_dist < walk_distance:
             # Distance between A and B is less than the distance to travel,
             # then just return the point for B.
-            print(".")
+            # print(".")
             return other
 
         bearing = self.get_bearing(other)
-        offset = geopy.distance.distance(distance).destination(other, bearing=bearing)
-        mp = self.make_mp(offset)
+        next_step = geopy.distance.distance(walk_distance).destination(self, bearing=bearing)
+        mp = self.make_mp(next_step)
 
         return mp
 
+    def array(self):
+        # Return an array of [lat, lon]
+        return [self.latitude, self.longitude]
+
+
+class TablePrint():
+    def __init__(self, headers, formats):
+        if type(headers) != type([]):
+            print("Need to initialize headers with an array.")
+            exit(1)
+
+        if type(formats) != type([]):
+            print("Need to initialize formats with an array.")
+            exit(1)
+
+        if len(headers) != len(formats):
+            print("Length of headers and formats need to be equal.")
+            exit(1)
+
+        self.headers = headers
+        self.formats = formats
+        self.counter = 0
+        self.first_line = True
+        self.interval = 30
+        self.table_format = ""
+        self.break_format = ""
+        self.header_format = ""
+
+        self.make_formats()
+
+    def make_formats(self):
+        header_len = len(self.headers)
+        header_format = ""
+        table_format = ""
+        break_format = ""
+        for i in range(header_len):
+            format_len = 0
+            try:
+                format_len = int(re.search(r'([0-9]+)(?:\.[0-9]+|)[fds]', self.formats[i]).groups()[0])
+            except:
+                print("Unable to parse format rules.")
+                exit(1)
+
+            break_format += "-" + "-"*format_len + "-"
+            header_format += " " + re.sub(r'(?:\.[0-9]+|)[fd]', 's', self.formats[i]) + " "
+            table_format += " " + self.formats[i] + " "
+            if i != header_len-1:
+                table_format += "|"
+                header_format += "|"
+                break_format += "+"
+
+        self.table_format = table_format
+        self.header_format = header_format
+        self.break_format = break_format
+
+    def print_headers(self):
+        print(self.header_format.format(*self.headers))
+        print(self.break_format)
+
+    def print_break(self):
+        print(self.break_format)
+        self.print_headers()
+
+    def p(self, values):
+        if self.first_line:
+            self.print_headers()
+            self.first_line = False
+        elif self.counter % self.interval == 0:
+            self.print_break()
+
+        print(self.table_format.format(*values))
+        self.counter += 1
 
 
 # adb shell dumpsys location |grep -A 1 "gps provider"
@@ -73,7 +152,6 @@ walk_speed_in_kps = walk_speed_in_kmh / hour
 pulse_timing = 3  # seconds between sending commands
 
 distance_per_pulse = walk_speed_in_kps * pulse_timing
-distance_per_pulse_km = (walk_speed_in_kmh * pulse_timing) / hour
 
 print("Distance per pulse (km): %f" % distance_per_pulse)
 
@@ -109,6 +187,14 @@ def ask_coords():
         return MyPoint(0, 0), 1
 
 
+pt = TablePrint(["Step", "Cur Lat", "Cur Lon", "distance", "Next lat", "Next lon"],
+                ["{:^4d}", "{:^10.5f}", "{:^10.5f}", "{:^8.5f}", "{:^10.5f}", "{:^10.5f}"])
+
+print(pt.header_format)
+print(pt.headers)
+print(pt.table_format)
+
+
 while 1:
     future_loc, ret_val = ask_coords()
     if ret_val == 1:
@@ -117,7 +203,7 @@ while 1:
 
     walk_distance = current.distance_in_km(future_loc)
     print("Distance in km: %5.4f" % walk_distance)
-    pulses = (walk_distance * 1000) / distance_per_pulse
+    pulses = walk_distance / distance_per_pulse
     print("Pulses: %.4f" % pulses)
 
     base = datetime(2021, 1, 1, 0, 0, 0).timestamp()
@@ -125,10 +211,16 @@ while 1:
     print("Time taken (hms): %s" % datetime.fromtimestamp(offset).strftime("%H:%M:%S"))
 
     step = current
-    i = 0
-    while step != future_loc:
+    i = 1
+    print("Starting point: %s" % step.format_decimal())
+    print("Ending point  : %s" % future_loc.format_decimal())
+
+    pt.print_headers()
+
+    while i <= pulses:
         step = current.walk_to_dest(future_loc, distance_per_pulse)
-        print("Step %d, Coords: %s" % (i, step.format_decimal()))
+        rem_distance = step.distance_in_km(future_loc)
+        pt.p([i, *current.array(), rem_distance, *step.array()])
         i += 1
         current = step
 
