@@ -2,10 +2,16 @@
 import re
 import os
 import subprocess
+import time
+
 import geopy.distance
 from datetime import datetime
 import math
 import numpy
+from geographiclib.geodesic import Geodesic
+from random import SystemRandom
+
+jitter = SystemRandom()
 
 
 class MyPoint(geopy.Point):
@@ -39,6 +45,14 @@ class MyPoint(geopy.Point):
         b = (other.latitude, other.longitude)
         return geopy.distance.distance(a, b).km
 
+    def get_new_bearing(self, other):
+        fwd_azimuth = Geodesic.WGS84.Inverse(*self.array(), *other.array())['azi1']
+
+        # Add some jitter to the bearing
+        fwd_azimuth += bearing_jitter - (jitter.random() * 2 * bearing_jitter)
+        #print("FSA",fwd_azimuth)
+        return fwd_azimuth
+
     def get_bearing(self, other):
         # Calculate the bearing to the destination
         dLon = other.longitude - self.longitude
@@ -51,6 +65,7 @@ class MyPoint(geopy.Point):
 
         if brng < 0:
             brng += 360
+
         # print("b", x, y, dLon, brng)
         return brng
 
@@ -63,15 +78,24 @@ class MyPoint(geopy.Point):
             # print(".")
             return other
 
-        bearing = self.get_bearing(other)
+        bearing = self.get_new_bearing(other)
         next_step = geopy.distance.distance(walk_distance).destination(self, bearing=bearing)
+        send_step(next_step)
         mp = self.make_mp(next_step)
 
-        return mp
+        return mp, bearing
 
     def array(self):
         # Return an array of [lat, lon]
         return [self.latitude, self.longitude]
+
+
+def send_step(this_step):
+    lat = this_step.latitude
+    lon = this_step.longitude
+    adb_new = adb_command.format(lat=lat, lng=lon).split()
+    _ = subprocess.call(adb_new, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    time.sleep(pulse_timing)
 
 
 class TablePrint():
@@ -90,7 +114,7 @@ class TablePrint():
 
         self.headers = headers
         self.formats = formats
-        self.counter = 0
+        self.counter = 1
         self.first_line = True
         self.interval = 30
         self.table_format = ""
@@ -149,6 +173,7 @@ minute = 60
 hour = 3600
 walk_speed_in_kmh = 10.0
 walk_speed_in_kps = walk_speed_in_kmh / hour
+bearing_jitter = 5.0  # degrees +/- to randomly alter the bearing. especially useful for long walks.
 pulse_timing = 3  # seconds between sending commands
 
 distance_per_pulse = walk_speed_in_kps * pulse_timing
@@ -159,9 +184,9 @@ process = subprocess.Popen('adb shell dumpsys location |grep -A 1 "Last Known Lo
                            stdout=subprocess.PIPE)
 start_location = str(process.stdout.read())
 
-print("Lines: ", start_location)
+#print("Lines: ", start_location)
 start_coords = re.search("\[[\w]* ([0-9.-]+),([0-9.-]+)", start_location)
-print(start_coords)
+#print(start_coords)
 try:
     lat, lon = start_coords.groups()
 except AttributeError:
@@ -187,12 +212,12 @@ def ask_coords():
         return MyPoint(0, 0), 1
 
 
-pt = TablePrint(["Step", "Cur Lat", "Cur Lon", "distance", "Next lat", "Next lon"],
-                ["{:^4d}", "{:^10.5f}", "{:^10.5f}", "{:^8.5f}", "{:^10.5f}", "{:^10.5f}"])
+pt = TablePrint(["Step", "Cur Lat", "Cur Lon", "distance", "Next lat", "Next lon", "Bearing"],
+                ["{:^4d}", "{:^10.5f}", "{:^10.5f}", "{:^8.5f}", "{:^10.5f}", "{:^10.5f}", "{:>7.3f}"])
 
-print(pt.header_format)
-print(pt.headers)
-print(pt.table_format)
+# print(pt.header_format)
+# print(pt.headers)
+# print(pt.table_format)
 
 
 while 1:
@@ -218,9 +243,9 @@ while 1:
     pt.print_headers()
 
     while i <= pulses:
-        step = current.walk_to_dest(future_loc, distance_per_pulse)
+        step, brng = current.walk_to_dest(future_loc, distance_per_pulse)
         rem_distance = step.distance_in_km(future_loc)
-        pt.p([i, *current.array(), rem_distance, *step.array()])
+        pt.p([i, *current.array(), rem_distance, *step.array(), brng])
         i += 1
         current = step
 
