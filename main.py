@@ -1,4 +1,4 @@
-#!/Users/charles.wheeler/mygit/pyGPSHopper/venv/bin/python
+#!/usr/local/bin/python3
 # This is a sample Python script.
 
 import argparse
