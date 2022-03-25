@@ -1,4 +1,4 @@
-#!/Users/charles.wheeler/git/pyGPSHopper/venv/bin/python
+#!/Users/charles.wheeler/mygit/pyGPSHopper/venv/bin/python
 # This is a sample Python script.
 
 import argparse
@@ -152,17 +152,20 @@ def main():
     global args
     args = parser.parse_args()
     num_args = len(vars(args))
-    print("args passed: %d" % len(vars(args)))
+    #print("args passed: %s" % vars(args))
 
-    if num_args <= 1:
+    if args.dest_file is None:
         print_intro()
         waypoints = []
         line = None
         while line != "\n":
             line = sys.stdin.readline()
             waypoints.append(line)
-    else:
+    elif args.dest_file is not None:
         waypoints = args.dest_file.readlines()
+    else:
+        print("Unable to interpret arguments. Aborting.")
+        exit(1)
 
     if len(waypoints) < 1:
         print("-- No waypoints entered. We're done.")
