@@ -180,11 +180,11 @@ distance_per_pulse = walk_speed_in_kps * pulse_timing
 
 print("Distance per pulse (km): %f" % distance_per_pulse)
 
-process = subprocess.Popen('adb shell dumpsys location |grep -A 1 "last location="', shell=True,
+process = subprocess.Popen('adb shell dumpsys location |grep -iE "gps: location"', shell=True,
                            stdout=subprocess.PIPE)
 start_location = str(process.stdout.read())
 
-# print("Lines: ", start_location)
+print("Lines: ", start_location)
 start_coords = re.search("\[[\w]* ([0-9.-]+),([0-9.-]+)", start_location)
 print(start_coords)
 try:
