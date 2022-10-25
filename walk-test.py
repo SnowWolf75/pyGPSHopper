@@ -50,7 +50,7 @@ class MyPoint(geopy.Point):
 
         # Add some jitter to the bearing
         fwd_azimuth += bearing_jitter - (jitter.random() * 2 * bearing_jitter)
-        #print("FSA",fwd_azimuth)
+        # print("FSA",fwd_azimuth)
         return fwd_azimuth
 
     def get_bearing(self, other):
@@ -71,7 +71,7 @@ class MyPoint(geopy.Point):
 
     def walk_to_dest(self, other, walk_distance):
         km_dist = self.distance_in_km(other)
-        #print("Step distance (km): %.4f\tTo target: %.4f" % (walk_distance, km_dist))
+        # print("Step distance (km): %.4f\tTo target: %.4f" % (walk_distance, km_dist))
         if km_dist < walk_distance:
             # Distance between A and B is less than the distance to travel,
             # then just return the point for B.
@@ -136,10 +136,10 @@ class TablePrint():
                 print("Unable to parse format rules.")
                 exit(1)
 
-            break_format += "-" + "-"*format_len + "-"
+            break_format += "-" + "-" * format_len + "-"
             header_format += " " + re.sub(r'(?:\.[0-9]+|)[fd]', 's', self.formats[i]) + " "
             table_format += " " + self.formats[i] + " "
-            if i != header_len-1:
+            if i != header_len - 1:
                 table_format += "|"
                 header_format += "|"
                 break_format += "+"
@@ -180,11 +180,11 @@ distance_per_pulse = walk_speed_in_kps * pulse_timing
 
 print("Distance per pulse (km): %f" % distance_per_pulse)
 
-process = subprocess.Popen('adb shell dumpsys location |grep -A 1 "Last Known Locations:"', shell=True,
+process = subprocess.Popen('adb shell dumpsys location |grep -A 1 "last location="', shell=True,
                            stdout=subprocess.PIPE)
 start_location = str(process.stdout.read())
 
-#print("Lines: ", start_location)
+# print("Lines: ", start_location)
 start_coords = re.search("\[[\w]* ([0-9.-]+),([0-9.-]+)", start_location)
 print(start_coords)
 try:
