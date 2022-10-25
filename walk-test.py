@@ -186,7 +186,7 @@ start_location = str(process.stdout.read())
 
 #print("Lines: ", start_location)
 start_coords = re.search("\[[\w]* ([0-9.-]+),([0-9.-]+)", start_location)
-#print(start_coords)
+print(start_coords)
 try:
     lat, lon = start_coords.groups()
 except AttributeError:
