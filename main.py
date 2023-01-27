@@ -109,7 +109,7 @@ def wait_if_needed(past, future):
         cool_adjusted = cool_in_secs
         unit = "seconds"
 
-    signal.alarm(int(cool_in_secs))
+    # signal.alarm(int(cool_in_secs))
     _ = wait_message(cool_in_secs, cool_adjusted, unit)
 
 
