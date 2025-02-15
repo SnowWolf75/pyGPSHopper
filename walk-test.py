@@ -188,13 +188,13 @@ process = subprocess.Popen('adb shell dumpsys location', shell=True,
 # process_lines = str().replace('\r\n','\n').splitlines()
 location_lines = []
 for line in io.TextIOWrapper(process.stdout, encoding="utf-8"):
-    if re.search(r'gps [0-9.]+[, ]+[-0-9.]+', line):
+    if re.search(r'gps [0-9.]+\**[, ]+[-0-9.]+\**', line):
         location_lines.append(line)
 
 start_location = location_lines[-1]
 
 print("Lines: ", start_location)
-start_coords = re.search("\[[\w]* ([0-9.-]+),([0-9.-]+)", start_location)
+start_coords = re.search("\[[\w]* ([0-9.-]+)\**,([0-9.-]+)\**", start_location)
 print(start_coords)
 try:
     lat, lon = start_coords.groups()
