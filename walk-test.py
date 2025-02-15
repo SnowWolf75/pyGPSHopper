@@ -169,7 +169,16 @@ class TablePrint():
 
 
 # adb shell dumpsys location |grep -A 1 "gps provider"
-adb_command = "adb shell am startservice -a theappninjas.gpsjoystick.TELEPORT --ef lat {lat} --ef lng {lng}"
+
+try:
+    device_id = os.environ["ANDROID_SERIAL"]
+    print("!! Caught Android_Serial in environments")
+    adb_command = "adb -s " + device_id + " shell am startservice -a theappninjas.gpsjoystick.TELEPORT --ef lat {lat} --ef lng {lng}"
+    location_command = f"adb -s {device_id} shell dumpsys location"
+except KeyError:
+    adb_command = "adb shell am startservice -a theappninjas.gpsjoystick.TELEPORT --ef lat {lat} --ef lng {lng}"
+    location_command = "adb shell dumpsys location"
+
 minute = 60
 hour = 3600
 walk_speed_in_kmh = 10.0
@@ -181,7 +190,7 @@ distance_per_pulse = walk_speed_in_kps * pulse_timing
 
 print("Distance per pulse (km): %f" % distance_per_pulse)
 
-process = subprocess.Popen('adb shell dumpsys location', shell=True,
+process = subprocess.Popen(location_command, shell=True,
                            stdout=subprocess.PIPE)
 # process = subprocess.Popen('adb shell dumpsys location |grep -iE "gps: location"', shell=True,
 #                            stdout=subprocess.PIPE)
