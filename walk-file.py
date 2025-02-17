@@ -74,7 +74,7 @@ print("  Lines: ", len(linestrings))
 
 coord_list = linestrings[0].coordinates.text.splitlines()
 coord_list = [re.sub(r"^ +", "", re.sub(r",0$", "", c)) for c in coord_list][1:]
-print(coord_list)
+# print(coord_list)
 # coord_string = re.sub(r"(?:,0|)\\n +", "^", linestrings[0].coordinates.text)
 # print("List:",len(coord_string))
 # print(coord_string)
@@ -83,15 +83,14 @@ print("List:",len(coord_list))
 
 coord_obj = []
 for c in coord_list:
-    s = c.split(",")
     try:
+        s = c.split(",")
         coord_obj.append({"lat": s[1], "lon": s[0]})
     except IndexError:
         pass
 
 
 def pulse(coord):
-    print(".", end='')
     response = device.shell(adb_command.format(lat=coord["lat"], lng=coord["lon"]))
     time.sleep(pulse_timing)
     return response
@@ -99,6 +98,7 @@ def pulse(coord):
 
 ret = ""
 for spot in coord_obj:
+    print(".", end='')
     ret = pulse(spot)
     if ret.__contains__("Error"):
         print("!! Found error in traffic")
